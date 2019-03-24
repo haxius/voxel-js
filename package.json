@@ -1,6 +1,10 @@
 {
   "name": "voxel-js",
   "version": "0.1.0",
+  "description": "modern js stub for a javascript voxel game engine",
+  "repository": "git@github.com:haxius/voxel-js.git",
+  "author": "randy little",
+  "license": "MIT",
   "private": true,
   "dependencies": {
     "react": "^16.8.5",
@@ -10,8 +14,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "test": "react-scripts test"
   },
   "eslintConfig": {
     "extends": "react-app"
