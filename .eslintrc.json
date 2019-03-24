@@ -1,0 +1,17 @@
+{
+  "extends": ["plugin:flowtype/recommended", "airbnb-base", "prettier"],
+  "plugins": ["flowtype", "babel", "prettier"],
+  "env": {
+    "browser": true
+  },
+  "rules": {
+    "no-shadow": 0,
+    "no-restricted-syntax": 0,
+    "no-use-before-define": 0
+  },
+  "settings": {
+    "flowtype": {
+      "onlyFilesWithFlowAnnotation": false
+    }
+  }
+}
