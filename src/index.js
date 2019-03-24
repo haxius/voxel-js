@@ -1,1 +1,1 @@
-// foo
+console.log('foo');
