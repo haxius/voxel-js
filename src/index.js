@@ -19,6 +19,17 @@ class Voxel {
       distance: 800 // distance of map
     };
 
+    this.input = {
+      time: Date.now(),
+      forwardbackward: 0,
+      leftright: 0,
+      updown: 0,
+      lookup: false,
+      lookdown: false,
+      mouseposition: null,
+      keypressed: false
+    };
+
     this.map = {
       width: 1024,
       height: 1024,
@@ -27,8 +38,66 @@ class Voxel {
       color: new Uint32Array(1024 * 1024), // 1024 * 1024 int array with RGB colors,
       urls: { color: "/C1W.png", height: "/D1.png" }
     };
+
+    element.onkeydown = this.detectKeysDown;
+    element.onkeyup = this.detectKeysUp;
+    element.onmousedown = this.detectMouseDown;
+    element.onmouseup = this.detectMouseUp;
+    element.onmousemove = this.detectMouseMove;
+    element.ontouchstart = this.detectMouseDown;
+    element.ontouchend = this.detectMouseUp;
+    element.ontouchmove = this.detectMouseMove;
+
+    this.updating = false;
+
     this.loadMap();
   }
+
+  updateCamera = () => {
+    var current = Date.now();
+    const { input, camera, map } = this;
+
+    input.keypressed = false;
+    if (input.leftright != 0) {
+      camera.angle += input.leftright * 0.1 * (current - input.time) * 0.03;
+      input.keypressed = true;
+    }
+    if (input.forwardbackward != 0) {
+      camera.x -=
+        input.forwardbackward *
+        Math.sin(camera.angle) *
+        (current - input.time) *
+        0.03;
+      camera.y -=
+        input.forwardbackward *
+        Math.cos(camera.angle) *
+        (current - input.time) *
+        0.03;
+      input.keypressed = true;
+    }
+    if (input.updown != 0) {
+      camera.height += input.updown * (current - input.time) * 0.03;
+      input.keypressed = true;
+    }
+    if (input.lookup) {
+      camera.horizon += 2 * (current - input.time) * 0.03;
+      input.keypressed = true;
+    }
+    if (input.lookdown) {
+      camera.horizon -= 2 * (current - input.time) * 0.03;
+      input.keypressed = true;
+    }
+
+    // Collision detection. Don't fly below the surface.
+    var mapoffset =
+      (((Math.floor(camera.y) & (map.width - 1)) << map.shift) +
+        (Math.floor(camera.x) & (map.height - 1))) |
+      0;
+    if (map.altitude[mapoffset] + 10 > camera.height)
+      camera.height = map.altitude[mapoffset] + 10;
+
+    input.time = current;
+  };
 
   resize = () => {
     const { element, screen } = this;
@@ -46,9 +115,159 @@ class Voxel {
     element.height = height;
 
     screen.imagedata = ctx.createImageData(width < 800 ? width : 800, height);
-    screen.bufarray = new ArrayBuffer(screen.imagedata.width * screen.imagedata.height * 4);
+    screen.bufarray = new ArrayBuffer(
+      screen.imagedata.width * screen.imagedata.height * 4
+    );
     screen.buf8 = new Uint8Array(screen.bufarray);
     screen.buf32 = new Uint32Array(screen.bufarray);
+  };
+
+  getMousePosition = ({
+    pageX,
+    pageY,
+    type,
+    targetTouches: [{ pageX: touchX, pageY: touchY } = {}] = []
+  }) => {
+    let result;
+
+    // fix for Chrome
+    if (type.startsWith("touch")) {
+      result = [touchX, touchY];
+    } else {
+      result = [pageX, pageY];
+    }
+
+    return result;
+  };
+
+  detectMouseDown = e => {
+    const { input } = this;
+
+    input.forwardbackward = 3;
+    input.mouseposition = this.getMousePosition(e);
+    input.time = new Date().getTime();
+
+    // if (!this.updating) window.requestAnimationFrame(s => this.tick(s));
+  };
+
+  detectMouseUp = () => {
+    const { input } = this;
+
+    input.mouseposition = null;
+    input.forwardbackward = 0;
+    input.leftright = 0;
+    input.updown = 0;
+  };
+
+  detectMouseMove = e => {
+    e.preventDefault();
+
+    const { input, camera } = this;
+
+    if (input.mouseposition == null) return;
+    if (input.forwardbackward == 0) return;
+
+    var currentMousePosition = this.getMousePosition(e);
+
+    input.leftright =
+      ((input.mouseposition[0] - currentMousePosition[0]) / window.innerWidth) *
+      2;
+
+    camera.horizon =
+      100 +
+      ((input.mouseposition[1] - currentMousePosition[1]) /
+        window.innerHeight) *
+        500;
+
+    input.updown =
+      ((input.mouseposition[1] - currentMousePosition[1]) /
+        window.innerHeight) *
+      10;
+  };
+
+  detectKeysDown = ({ keyCode }) => {
+    const { input, updating } = this;
+
+    switch (keyCode) {
+      case 37: // left cursor
+      case 65: // a
+        input.leftright = +1;
+        break;
+      case 39: // right cursor
+      case 68: // d
+        input.leftright = -1;
+        break;
+      case 38: // cursor up
+      case 87: // w
+        input.forwardbackward = 3;
+        break;
+      case 40: // cursor down
+      case 83: // s
+        input.forwardbackward = -3;
+        break;
+      case 82: // r
+        input.updown = +2;
+        break;
+      case 70: // f
+        input.updown = -2;
+        break;
+      case 69: // e
+        input.lookup = true;
+        break;
+      case 81: //q
+        input.lookdown = true;
+        break;
+      default:
+        return;
+        break;
+    }
+
+    if (!updating) {
+      input.time = new Date().getTime();
+      // window.requestAnimationFrame(s => this.tick(s));
+    }
+
+    return false;
+  };
+
+  detectKeysUp = ({ keyCode }) => {
+    const { input } = this;
+
+    switch (keyCode) {
+      case 37: // left cursor
+      case 65: // a
+        input.leftright = 0;
+        break;
+      case 39: // right cursor
+      case 68: // d
+        input.leftright = 0;
+        break;
+      case 38: // cursor up
+      case 87: // w
+        input.forwardbackward = 0;
+        break;
+      case 40: // cursor down
+      case 83: // s
+        input.forwardbackward = 0;
+        break;
+      case 82: // r
+        input.updown = 0;
+        break;
+      case 70: // f
+        input.updown = 0;
+        break;
+      case 69: // e
+        input.lookup = false;
+        break;
+      case 81: //q
+        input.lookdown = false;
+        break;
+      default:
+        return;
+        break;
+    }
+
+    return false;
   };
 
   flip = () => {
@@ -104,12 +323,19 @@ class Voxel {
   }
 
   tick(s) {
+    this.updating = true;
     this.resize();
+    this.updateCamera();
     this.drawVoxels();
     this.flip();
     this.drawDebug(s);
 
-    window.requestAnimationFrame(s => this.tick(s));
+    if (!this.input.keypressed) {
+      this.updating = false;
+    }
+    // } else {
+      window.requestAnimationFrame(s => this.tick(s));
+    // }
   }
 
   fetchImages = urls =>
