@@ -36,7 +36,7 @@ class Voxel {
       shift: 10, // power of two: 2^10 = 1024
       altitude: new Uint8Array(1024 * 1024), // 1024 * 1024 byte array with height information
       color: new Uint32Array(1024 * 1024), // 1024 * 1024 int array with RGB colors,
-      urls: { color: "/C1W.png", height: "/D1.png" }
+      urls: { color: "./C1W.png", height: "./D1.png" }
     };
 
     element.onkeydown = this.detectKeysDown;
